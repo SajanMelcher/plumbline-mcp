@@ -19,6 +19,10 @@ const files = unzipSync(readFileSync(bundlePath));
 if (!files["manifest.json"]) fail("manifest.json not at archive root");
 const m = JSON.parse(strFromU8(files["manifest.json"]));
 if (!m.name || !m.version) fail("manifest needs name and version");
+// Registry bug (smithery-ai/cli#770): a serverCard with only serverInfo fails with 400 "No values to set".
+if (m.tools === undefined && m.prompts === undefined && m.resources === undefined) {
+  fail('manifest has no "tools" key; Smithery rejects that with 400 "No values to set" (add "tools": [])');
+}
 if (m.tools !== undefined) {
   if (!Array.isArray(m.tools)) fail("manifest tools must be an array");
   for (const t of m.tools) if (!t.inputSchema) fail(`manifest tool "${t.name}" has no inputSchema; Smithery's ServerCard requires it (this caused the 400s)`);

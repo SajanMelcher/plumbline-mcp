@@ -25,6 +25,7 @@
       "env": {}
     }
   },
+  "tools": [],
   "tools_generated": true,
   "keywords": [
     "sui",
