@@ -5,7 +5,7 @@ import { DISCLAIMER, registerTools } from "./tools.js";
 import type { PaymentRuntime } from "./payments.js";
 
 export const NAME = "plumbline";
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0";
 
 // One shared client => one shared cache across sessions/transports.
 let shared: DeepBookClient | undefined;

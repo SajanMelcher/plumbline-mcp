@@ -6,7 +6,7 @@
  * - Generates a throwaway payTo address; its key is discarded immediately.
  * - Tries the official testnet faucet for gas. If the faucet refuses, the script stops and says so.
  * - Needs >= 0.01 testnet USDC on the payer, or set E2E_ASSET=SUI to pay in testnet SUI (test-only override).
- * - Starts Plumbline over HTTP with payments on (free tier = 1) and checks: free call -> 402 -> real Sui transfer -> verified -> served -> replay rejected.
+ * - Starts Plumbline over HTTP with payments on (free tier = 1) and checks: free call -> 402 -> real Sui transfer -> verified -> served -> credits by token -> replay rejected.
  *
  * Usage: npm run build && node --import tsx scripts/sui-testnet-e2e.ts
  */
@@ -81,7 +81,8 @@ async function main() {
   console.log(`call 1 (free): isError=${Boolean(r1.isError)}`);
   const r2 = await call();
   const req = r2.structuredContent?.accepts?.[0];
-  console.log(`call 2: 402 -> amount=${req?.amount} asset=${req?.asset} payTo=${req?.payTo}`);
+  const token = req?.extra?.paymentToken;
+  console.log(`call 2: 402 -> exact amount=${req?.amount} asset=${req?.asset} payTo=${req?.payTo} (token received)`);
 
   const tx = new Transaction();
   tx.transferObjects([coinWithBalance({ type: asset, balance: BigInt(req.amount) })], req.payTo);
@@ -91,13 +92,15 @@ async function main() {
   await new Promise((r) => setTimeout(r, 3000)); // let GraphQL index it
   console.log(`paid on testnet: digest=${res.digest}`);
 
-  const r3 = await call({ payment_tx: res.digest });
+  const r3 = await call({ payment_token: token, payment_tx: res.digest });
   console.log(`call 3 (with digest): isError=${Boolean(r3.isError)} receipt=${JSON.stringify(r3._meta?.["x402/payment-response"] ?? r3.structuredContent?.error)}`);
-  const r4 = await call({ payment_tx: res.digest });
-  console.log(`call 4: ${r4.isError ? "rejected (" + r4.structuredContent?.error + ")" : "served from credits"}`);
+  const r4 = await call({ payment_token: token });
+  console.log(`call 4 (token only): ${r4.isError ? "rejected (" + r4.structuredContent?.error + ")" : "served from credits"}`);
+  const r5 = await call({ payment_token: token, payment_tx: res.digest });
+  console.log(`call 5 (replay): ${r5.isError ? "rejected (" + r5.structuredContent?.error + ")" : "UNEXPECTEDLY ACCEPTED"}`);
   await client.close();
   child.kill();
-  const ok = !r1.isError && r2.isError && !r3.isError;
+  const ok = !r1.isError && r2.isError && !r3.isError && !r4.isError && r5.isError;
   console.log(ok ? "E2E OK" : "E2E FAILED");
   process.exit(ok ? 0 : 1);
 }

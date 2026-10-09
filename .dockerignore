@@ -4,3 +4,13 @@ test
 scripts
 *.md
 !README.md
+build
+deploy/*.toml
+deploy/*.yaml
+.env
+.env.*
+*.key
+*.pem
+*state*.json
+redeemed*.json
+.git

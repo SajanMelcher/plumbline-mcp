@@ -1,0 +1,43 @@
+# Fly.io config for the hosted HTTP endpoint. NOTHING IS DEPLOYED BY THIS FILE.
+# Payments stay OFF unless the payment env (PAYTO_ADDRESS etc.) is imported as Fly secrets; see deploy/DEPLOY.md.
+# The payee address is never stored in this repo.
+app = "plumbline-mcp"            # change if the name is taken
+primary_region = "iad"           # cheapest region tier ($2.19/mo for shared-cpu-1x 256MB)
+
+[build]
+  dockerfile = "Dockerfile"      # deploy/Dockerfile (paths are relative to this file)
+
+[env]
+  TRANSPORT = "http"
+  HOST = "0.0.0.0"
+  PORT = "8080"
+  PLUMBLINE_STATE_FILE = "/data/plumbline-state.json"
+  PLUMBLINE_CLIENT_IP_HEADER = "fly-client-ip"   # set by Fly's edge, overwritten on every request
+  PLUMBLINE_RATE_LIMIT_PER_MIN = "120"
+
+[[mounts]]
+  source = "plumbline_data"
+  destination = "/data"
+  initial_size = "1gb"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"     # payment state is local: run exactly ONE always-on machine
+  auto_start_machines = true
+  min_machines_running = 1
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 50
+    hard_limit = 100
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  path = "/health"
+  timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

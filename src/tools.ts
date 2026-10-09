@@ -77,7 +77,12 @@ export function registerTools(server: McpServer, db: DeepBookClient, opts: Regis
     .min(32)
     .max(64)
     .optional()
-    .describe("Only needed after the free tier: Sui transaction digest of your USDC payment to payTo (see the payment-required response)");
+    .describe("Only after the free tier: Sui transaction digest of your exact USDC payment for payment_token (see the payment-required response)");
+  const tokenArg = z
+    .string()
+    .regex(/^plb_[A-Za-z0-9_-]{43}$/)
+    .optional()
+    .describe("Only after the free tier: the private payment_token from the payment-required response; it holds your prepaid calls");
   const reg = (
     name: string,
     config: { description: string; inputSchema?: Record<string, z.ZodTypeAny> } & Record<string, unknown>,
@@ -89,7 +94,7 @@ export function registerTools(server: McpServer, db: DeepBookClient, opts: Regis
       {
         ...config,
         description: metered ? config.description + suffix : config.description,
-        inputSchema: metered ? { ...(config.inputSchema ?? {}), payment_tx: paymentArg } : config.inputSchema,
+        inputSchema: metered ? { ...(config.inputSchema ?? {}), payment_token: tokenArg, payment_tx: paymentArg } : config.inputSchema,
       },
       metered ? payments!.gate(name, handler as any, clientId) : handler,
     );

@@ -18,7 +18,7 @@ The demand logic comes from the research spec: list free on Smithery, use public
 
 ## 3. x402-style pay-per-call in USDC on Sui (opt-in code now in repo, off by default)
 - **What:** charge per tool call or per premium call (for example $0.001-$0.01) through HTTP 402 payment challenges, settled in USDC, so agents pay without accounts.
-- **Status:** implemented as an opt-in `sui-digest` flow. The client pays USDC on Sui to `PAYTO_ADDRESS`, and the server verifies the digest via Sui GraphQL. There are no keys and no facilitator. See the README.
+- **Status:** implemented as an opt-in `sui-challenge` flow. The client pays a unique exact USDC amount on Sui to `PAYTO_ADDRESS` and redeems it with a private token; the server verifies the digest via Sui GraphQL. There are no keys and no facilitator. See the README.
 - **Needs:** the hosted HTTP transport; a **receive-only Sui address controlled by the owner**; owner sign-off on price and free tier; a mainnet opt-in; and accounting and tax handling for revenue.
 - **Fit:** the spec flags x402/paid-MCP chatter at about 12.5k X posts in 7 days, and Allium's AgentHub uses this model for on-chain data.
 - **Risk:** a young ecosystem, custody and treasury handling, and the possibility of payment-related regulatory questions. Use a dedicated, owner-controlled receiving wallet, never an operational or trading wallet.

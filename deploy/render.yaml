@@ -1,0 +1,27 @@
+# Render Blueprint (alternative to Fly). NOTHING IS DEPLOYED BY THIS FILE.
+# Starter ($7/mo) is the cheapest plan that can mount a persistent disk; Free cannot (and spins down).
+services:
+  - type: web
+    name: plumbline-mcp
+    runtime: docker
+    dockerfilePath: ./deploy/Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    healthCheckPath: /health
+    numInstances: 1              # payment state is local: never scale out
+    disk:
+      name: plumbline-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: TRANSPORT
+        value: http
+      - key: PLUMBLINE_STATE_FILE
+        value: /data/plumbline-state.json
+      - key: PLUMBLINE_TRUST_PROXY   # Render's proxy appends the client IP to X-Forwarded-For (verify after first deploy)
+        value: "1"
+      # Payment variables (PLUMBLINE_PAYMENTS, PAYTO_ADDRESS, PLUMBLINE_SUI_NETWORK, PLUMBLINE_PAYMENTS_ALLOW_MAINNET)
+      # are set in the dashboard from the private env file; they are deliberately not in this file.
+      - key: PAYTO_ADDRESS
+        sync: false

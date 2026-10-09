@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createServer, NAME, VERSION } from "./server.js";
 import { createPaymentRuntime, loadPaymentConfig, type PaymentRuntime } from "./payments.js";
+import { clientIdFor, RateLimiter } from "./clientid.js";
 
 const args = process.argv.slice(2);
 if (args.includes("--help") || args.includes("-h")) {
@@ -15,7 +16,8 @@ if (args.includes("--help") || args.includes("-h")) {
       `Env: PORT, HOST (default 127.0.0.1), PLUMBLINE_INDEXER_URL, PLUMBLINE_GRAPHQL_URL, PLUMBLINE_TIMEOUT_MS\n` +
       `Optional Sui USDC pay-per-call (off by default): PLUMBLINE_PAYMENTS=1, PAYTO_ADDRESS (receive-only Sui address),\n` +
       `  PLUMBLINE_SUI_NETWORK (testnet|mainnet), PLUMBLINE_PRICE_USDC, PLUMBLINE_MIN_PAYMENT_USDC, PLUMBLINE_FREE_CALLS_PER_DAY,\n` +
-      `  PLUMBLINE_PAYMENT_MAX_AGE_SEC, PLUMBLINE_PAYMENTS_ALLOW_MAINNET, PLUMBLINE_REDEEMED_FILE, PLUMBLINE_TRUST_PROXY\n`,
+      `  PLUMBLINE_PAYMENT_MAX_AGE_SEC, PLUMBLINE_PAYMENTS_ALLOW_MAINNET, PLUMBLINE_STATE_FILE (required on mainnet),\n` +
+      `  PLUMBLINE_TRUST_PROXY, PLUMBLINE_CLIENT_IP_HEADER, PLUMBLINE_CLOCK_SKEW_SEC, PLUMBLINE_AMOUNT_TAG_RANGE, PLUMBLINE_RATE_LIMIT_PER_MIN (see README)\n`,
   );
   process.exit(0);
 }
@@ -37,21 +39,12 @@ async function readBody(req: IncomingMessage, limit = 1_000_000): Promise<unknow
   return raw ? JSON.parse(raw) : undefined;
 }
 
-function clientIdFor(req: IncomingMessage, trustProxy: boolean): string {
-  if (trustProxy) {
-    const xff = req.headers["x-forwarded-for"];
-    const first = (Array.isArray(xff) ? xff[0] : xff)?.split(",")[0]?.trim();
-    if (first) return `ip:${first}`;
-  }
-  return `ip:${req.socket.remoteAddress ?? "unknown"}`;
-}
-
 async function main() {
   const payCfg = loadPaymentConfig();
   let payments: PaymentRuntime | null = null;
   if (payCfg) {
     payments = createPaymentRuntime(payCfg);
-    process.stderr.write(`Payments ENABLED (${payCfg.network}, scheme sui-digest): ${payments.describe()}\n`);
+    process.stderr.write(`${payments.logLine()}\n`);
   }
   if (!args.includes("--http") && process.env.TRANSPORT !== "http") {
     const server = createServer({ payments, clientId: "stdio" });
@@ -62,6 +55,9 @@ async function main() {
 
   const port = Number(flag("--port") ?? process.env.PORT ?? 8081);
   const host = flag("--host") ?? process.env.HOST ?? "127.0.0.1";
+  const rpm = Number(process.env.PLUMBLINE_RATE_LIMIT_PER_MIN ?? 120);
+  const limiter = new RateLimiter(Number.isFinite(rpm) ? rpm : 120);
+  const trust = { trustProxy: payCfg?.trustProxy ?? /^(1|true|yes|on)$/i.test(process.env.PLUMBLINE_TRUST_PROXY ?? ""), clientIpHeader: payCfg?.clientIpHeader ?? (process.env.PLUMBLINE_CLIENT_IP_HEADER?.toLowerCase() || undefined) };
   const http = createHttpServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     if (url.pathname === "/health") {
@@ -79,9 +75,16 @@ async function main() {
       );
       return;
     }
+    const clientId = clientIdFor(req, trust);
+    if (!limiter.allow(clientId)) {
+      res.writeHead(429, { "content-type": "application/json", "retry-after": "60" }).end(
+        JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: "Rate limited; retry in a minute" }, id: null }),
+      );
+      return;
+    }
     try {
       const body = await readBody(req);
-      const server = createServer({ payments, clientId: clientIdFor(req, payCfg?.trustProxy ?? false) });
+      const server = createServer({ payments, clientId });
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       res.on("close", () => {
         void transport.close();
