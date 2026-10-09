@@ -4,11 +4,14 @@ export interface Config {
   timeoutMs: number;
 }
 
+/** Empty strings count as unset (MCPB clients pass "" for optional settings left blank). */
+const val = (v: string | undefined) => (v && v.trim() && !/^\$\{user_config\./.test(v) ? v.trim() : undefined);
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const timeout = Number(env.PLUMBLINE_TIMEOUT_MS ?? 8000);
+  const timeout = Number(val(env.PLUMBLINE_TIMEOUT_MS) ?? 8000);
   return {
-    indexerUrl: (env.PLUMBLINE_INDEXER_URL ?? "https://deepbook-indexer.mainnet.mystenlabs.com").replace(/\/+$/, ""),
-    graphqlUrl: env.PLUMBLINE_GRAPHQL_URL ?? "https://graphql.mainnet.sui.io/graphql",
+    indexerUrl: (val(env.PLUMBLINE_INDEXER_URL) ?? "https://deepbook-indexer.mainnet.mystenlabs.com").replace(/\/+$/, ""),
+    graphqlUrl: val(env.PLUMBLINE_GRAPHQL_URL) ?? "https://graphql.mainnet.sui.io/graphql",
     timeoutMs: Number.isFinite(timeout) && timeout >= 1000 && timeout <= 60000 ? timeout : 8000,
   };
 }

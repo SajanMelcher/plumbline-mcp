@@ -1,0 +1,49 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.SajanMelcher/plumbline-mcp",
+  "title": "Plumbline: DeepBook Market Data",
+  "description": "Read-only Sui DeepBook v3 market data: pools, mid, depth, volume, fees, trades, OHLCV. No keys.",
+  "repository": {
+    "url": "https://github.com/SajanMelcher/plumbline-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/SajanMelcher/plumbline-mcp",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/SajanMelcher/plumbline-mcp/main/icon.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    }
+  ],
+  "version": "0.2.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "plumbline-mcp",
+      "version": "0.2.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "PLUMBLINE_INDEXER_URL",
+          "description": "Optional DeepBook v3 indexer base URL (default: Mysten Labs public indexer)",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "https://deepbook-indexer.mainnet.mystenlabs.com"
+        },
+        {
+          "name": "PLUMBLINE_TIMEOUT_MS",
+          "description": "Optional upstream timeout in milliseconds (1000-60000)",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "number",
+          "default": "8000"
+        }
+      ]
+    }
+  ]
+}

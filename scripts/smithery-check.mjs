@@ -41,6 +41,18 @@ const payload = {
     ...(m.resources ? { resources: m.resources } : {}),
   },
 };
+// user_config -> configSchema, flat keys only (Plumbline's are flat). All optional => Smithery "optional config".
+if (m.user_config && Object.keys(m.user_config).length) {
+  const properties = {};
+  const required = [];
+  for (const [k, o] of Object.entries(m.user_config)) {
+    const type = o.type === "directory" || o.type === "file" ? "string" : o.type;
+    properties[k] = { type, ...(o.title ? { title: o.title } : {}), ...(o.description ? { description: o.description } : {}), ...(o.default !== undefined ? { default: o.default } : {}) };
+    if (o.required) required.push(k);
+  }
+  payload.configSchema = { type: "object", properties, required };
+}
+if (m.icon && !files[m.icon]) fail(`icon ${m.icon} missing from bundle`);
 
 const res = await fetch("https://smithery.ai/docs/openapi.json");
 if (!res.ok) fail(`could not fetch Smithery OpenAPI (${res.status})`);

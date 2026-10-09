@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { loadConfig, type Config } from "./config.js";
 import { DeepBookClient } from "./deepbook.js";
 import { DISCLAIMER, registerTools } from "./tools.js";
+import { registerPromptsAndResources } from "./prompts.js";
 import type { PaymentRuntime } from "./payments.js";
 
 export const NAME = "plumbline";
@@ -15,7 +16,7 @@ export function createServer(opts: { config?: Config; payments?: PaymentRuntime 
   const server = new McpServer(
     { name: NAME, version: VERSION },
     {
-      capabilities: { tools: {} },
+      capabilities: { tools: {}, prompts: {}, resources: {} },
       instructions:
         `Plumbline: read-only Sui DeepBook v3 market data (pools, mid, depth, volume, fees, trades, OHLCV). ` +
         `Pool names are BASE_QUOTE, e.g. SUI_USDC; call list_pools first if unsure. No keys, no wallets, no trading. ${DISCLAIMER}` +
@@ -23,6 +24,7 @@ export function createServer(opts: { config?: Config; payments?: PaymentRuntime 
     },
   );
   registerTools(server, db, { payments: opts.payments, clientId: opts.clientId });
+  registerPromptsAndResources(server);
   return server;
 }
 

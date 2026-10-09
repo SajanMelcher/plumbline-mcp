@@ -14,6 +14,7 @@
   },
   "homepage": "https://github.com/SajanMelcher/plumbline-mcp",
   "support": "https://github.com/SajanMelcher/plumbline-mcp/issues",
+  "icon": "icon.png",
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
@@ -22,11 +23,16 @@
       "args": [
         "${__dirname}/dist/index.js"
       ],
-      "env": {}
+      "env": {
+        "PLUMBLINE_INDEXER_URL": "${user_config.indexer_url}",
+        "PLUMBLINE_GRAPHQL_URL": "${user_config.graphql_url}",
+        "PLUMBLINE_TIMEOUT_MS": "${user_config.timeout_ms}"
+      }
     }
   },
   "tools": [],
   "tools_generated": true,
+  "prompts_generated": true,
   "keywords": [
     "sui",
     "deepbook",
@@ -39,6 +45,31 @@
   "compatibility": {
     "runtimes": {
       "node": ">=18.17.0"
+    }
+  },
+  "user_config": {
+    "indexer_url": {
+      "type": "string",
+      "title": "DeepBook indexer URL",
+      "description": "Optional. Public DeepBook v3 indexer base URL.",
+      "required": false,
+      "default": "https://deepbook-indexer.mainnet.mystenlabs.com"
+    },
+    "graphql_url": {
+      "type": "string",
+      "title": "Sui GraphQL URL",
+      "description": "Optional. Sui GraphQL endpoint used for live on-chain pool parameters.",
+      "required": false,
+      "default": "https://graphql.mainnet.sui.io/graphql"
+    },
+    "timeout_ms": {
+      "type": "number",
+      "title": "Upstream timeout (ms)",
+      "description": "Optional. Per-request timeout for upstream calls, 1000 to 60000.",
+      "required": false,
+      "default": 8000,
+      "min": 1000,
+      "max": 60000
     }
   }
 }

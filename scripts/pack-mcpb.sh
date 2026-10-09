@@ -9,7 +9,7 @@ MCPB=./node_modules/.bin/mcpb
 rm -rf build/stage build/plumbline.mcpb
 npm run build
 mkdir -p build/stage
-cp -r dist package.json package-lock.json manifest.json LICENSE README.md build/stage/
+cp -r dist package.json package-lock.json manifest.json icon.png LICENSE README.md build/stage/
 (cd build/stage && npm ci --omit=dev --omit=peer --ignore-scripts --no-audit --no-fund >/dev/null)
 "$MCPB" validate build/stage/manifest.json
 "$MCPB" pack build/stage build/plumbline.mcpb

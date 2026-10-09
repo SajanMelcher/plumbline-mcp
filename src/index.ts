@@ -5,6 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createServer, NAME, VERSION } from "./server.js";
 import { createPaymentRuntime, loadPaymentConfig, type PaymentRuntime } from "./payments.js";
 import { clientIdFor, RateLimiter } from "./clientid.js";
+import { buildServerCard } from "./servercard.js";
 
 const args = process.argv.slice(2);
 if (args.includes("--help") || args.includes("-h")) {
@@ -58,10 +59,21 @@ async function main() {
   const rpm = Number(process.env.PLUMBLINE_RATE_LIMIT_PER_MIN ?? 120);
   const limiter = new RateLimiter(Number.isFinite(rpm) ? rpm : 120);
   const trust = { trustProxy: payCfg?.trustProxy ?? /^(1|true|yes|on)$/i.test(process.env.PLUMBLINE_TRUST_PROXY ?? ""), clientIpHeader: payCfg?.clientIpHeader ?? (process.env.PLUMBLINE_CLIENT_IP_HEADER?.toLowerCase() || undefined) };
+  let card: Promise<string> | null = null;
   const http = createHttpServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     if (url.pathname === "/health") {
       res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true, name: NAME, version: VERSION }));
+      return;
+    }
+    if (url.pathname === "/.well-known/mcp/server-card.json" && req.method === "GET") {
+      try {
+        card ??= buildServerCard(payments).then((c) => JSON.stringify(c));
+        res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600", "access-control-allow-origin": "*" }).end(await card);
+      } catch {
+        card = null;
+        res.writeHead(500, { "content-type": "application/json" }).end(JSON.stringify({ error: "server card unavailable" }));
+      }
       return;
     }
     if (url.pathname !== "/mcp") {
