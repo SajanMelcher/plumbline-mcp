@@ -1,0 +1,36 @@
+# Smithery configuration (legacy stdio format, kept for compatibility).
+# Current Smithery docs publish local servers as an MCPB bundle (npm run pack:mcpb -> build/plumbline.mcpb) or hosted servers by URL.
+# NOT YET PUBLISHED - publishing requires owner approval.
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    description: No configuration needed. Optional overrides for the public data endpoints.
+    properties:
+      indexerUrl:
+        type: string
+        description: DeepBook indexer base URL
+        default: https://deepbook-indexer.mainnet.mystenlabs.com
+      graphqlUrl:
+        type: string
+        description: Sui GraphQL endpoint (used only for on-chain fee/param reads)
+        default: https://graphql.mainnet.sui.io/graphql
+      timeoutMs:
+        type: number
+        description: Upstream request timeout in milliseconds (1000-60000)
+        default: 8000
+    additionalProperties: false
+  commandFunction: |-
+    (config) => ({
+      command: 'node',
+      args: ['dist/index.js'],
+      env: {
+        ...(config.indexerUrl ? { PLUMBLINE_INDEXER_URL: config.indexerUrl } : {}),
+        ...(config.graphqlUrl ? { PLUMBLINE_GRAPHQL_URL: config.graphqlUrl } : {}),
+        ...(config.timeoutMs ? { PLUMBLINE_TIMEOUT_MS: String(config.timeoutMs) } : {})
+      }
+    })
+  exampleConfig: {}
+build:
+  dockerfile: Dockerfile
+  dockerBuildPath: .

@@ -1,0 +1,28 @@
+# dependencies and build output
+node_modules/
+dist/
+build/
+*.tgz
+*.mcpb
+
+# environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*keystore*
+*.secret
+secrets/
+
+# test keys / local payment state
+.testnet/
+test-keys/
+redeemed*.json
+
+# logs and OS cruft
+*.log
+.DS_Store
+
+# internal launch notes (not for the public repo)
+LAUNCH.md

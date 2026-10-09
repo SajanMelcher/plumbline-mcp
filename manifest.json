@@ -1,0 +1,30 @@
+{
+  "manifest_version": "0.2",
+  "name": "plumbline-mcp",
+  "display_name": "Plumbline: DeepBook Market Data (read-only)",
+  "version": "0.1.0",
+  "description": "Free, read-only Sui DeepBook v3 market data: pools, mid price, order book depth, volume, fees, trades, OHLCV. No keys, no wallet. Education only, not financial advice.",
+  "author": { "name": "Plumbline contributors" },
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {}
+    }
+  },
+  "tools": [
+    { "name": "list_pools", "description": "List DeepBook pools and trading params" },
+    { "name": "get_mid_price", "description": "Best bid/ask, mid, spread" },
+    { "name": "get_order_book", "description": "Levels and depth within ±X% of mid" },
+    { "name": "get_volume", "description": "24h or custom-window volume, high/low, change" },
+    { "name": "get_pool_params", "description": "Live on-chain fees and pool parameters" },
+    { "name": "get_recent_trades", "description": "Recent fills" },
+    { "name": "get_ohlcv", "description": "OHLCV candles" },
+    { "name": "get_indexer_status", "description": "Data source health" }
+  ],
+  "keywords": ["sui", "deepbook", "orderbook", "market-data", "read-only", "mcp"],
+  "license": "MIT",
+  "compatibility": { "runtimes": { "node": ">=18.17.0" } }
+}
