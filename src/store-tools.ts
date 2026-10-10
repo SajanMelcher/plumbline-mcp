@@ -66,7 +66,7 @@ export function registerStoreTools(reg: Reg, wrap: Wrap, opts: StoreToolOpts = {
   const f = opts.fetchImpl ?? fetch;
   const lim = opts.lim ?? limiter;
   const client = opts.clientId ?? "anonymous";
-  const NOTE = "Not financial advice. All sales final. You pay from your own wallet; this connector never holds keys or funds.";
+  const NOTE = "Educational templates, not financial advice; no returns promised. All sales final, except where the law requires otherwise. You pay from your own wallet; this connector never holds keys or funds.";
 
   reg("list_templates", {
     title: "List desk templates",
@@ -77,8 +77,8 @@ export function registerStoreTools(reg: Reg, wrap: Wrap, opts: StoreToolOpts = {
     const r = await call(f, `${origin}/store/catalog.json`);
     if (!r.ok || !r.json?.products) throw new UpstreamError(`catalog.json HTTP ${r.status}`);
     const c = r.json;
-    return { store: origin, currency: c.currency, license: c.license, finalSales: c.finalSales, notAdvice: c.notAdvice, readOnlyJoin: c.readOnlyJoin,
-      products: c.products.map((p: any) => ({ sku: p.sku, name: p.name, role: p.role, priceUsdc: p.priceUsdc, version: p.version, bundle: p.bundle, addons: p.addons, page: p.page })),
+    return { store: origin, currency: c.currency, license: c.license, terms: c.terms, disclaimer: c.disclaimer, payment: c.payment, readOnlyJoin: c.readOnlyJoin, termsPage: c.termsPage,
+      products: c.products.map((p: any) => ({ sku: p.sku, name: p.name, priceUsdc: p.priceUsdc, version: p.version, description: p.description, includesFuture: p.includesFuture, addons: p.addons, page: p.page })),
       next: "Call create_template_order with a sku, pay the exact amount from your own wallet, then call check_template_order with the digest." };
   }));
 
