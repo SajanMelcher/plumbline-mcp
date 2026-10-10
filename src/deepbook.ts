@@ -146,6 +146,12 @@ export class DeepBookClient {
     return this.indexer<RawTrade[]>(`/trades/${pool}?${q}`, TTL.trades);
   }
 
+  /** Trades where a BalanceManager was maker or taker (indexer filter params). */
+  bmTrades(pool: string, bm: string, role: "maker" | "taker", limit: number, startSec: number, endSec: number): Promise<RawTrade[]> {
+    const q = new URLSearchParams({ limit: String(limit), [`${role}_balance_manager_id`]: bm, start_time: String(startSec), end_time: String(endSec) });
+    return this.indexer<RawTrade[]>(`/trades/${pool}?${q}`, TTL.trades);
+  }
+
   ohlcv(pool: string, interval: OhlcvInterval, limit: number, startSec?: number, endSec?: number) {
     const q = new URLSearchParams({ interval, limit: String(limit) });
     if (startSec !== undefined) q.set("start_time", String(startSec));

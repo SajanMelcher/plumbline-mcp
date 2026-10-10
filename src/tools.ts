@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { PaymentRuntime } from "./payments.js";
+import { registerDeskTools, DESK_TOOLS } from "./desk-tools.js";
 import {
   DeepBookClient,
   OHLCV_INTERVALS,
@@ -62,7 +63,7 @@ function bookTop(bids: [string, string][], asks: [string, string][]) {
 }
 
 /** Tools that may be metered when x402 is enabled. get_indexer_status always stays free. */
-export const PAID_TOOLS = ["list_pools", "get_mid_price", "get_order_book", "get_volume", "get_pool_params", "get_recent_trades", "get_ohlcv"];
+export const PAID_TOOLS = ["list_pools", "get_mid_price", "get_order_book", "get_volume", "get_pool_params", "get_recent_trades", "get_ohlcv", ...DESK_TOOLS];
 
 export interface RegisterOptions {
   payments?: PaymentRuntime | null;
@@ -471,4 +472,7 @@ export function registerTools(server: McpServer, db: DeepBookClient, opts: Regis
       };
     }),
   );
+
+  // 9-12. agent toolkit (read-only; metered like the data tools)
+  registerDeskTools(reg, wrap as any, db, poolArg, READ_ONLY, DISCLAIMER);
 }

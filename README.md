@@ -105,6 +105,10 @@ The server also ships prompts (`market_snapshot`, `compare_pools`, `liquidity_ch
 | `get_recent_trades` | Latest fills: time, taker side, price, base and quote qty, buy/sell stats | `pool`, `limit` (1-200), `start_time?`, `end_time?` (unix seconds), `include_tx?` |
 | `get_ohlcv` | Candles, oldest first; volume in the base asset | `pool`, `interval` (`1m,5m,15m,30m,1h,4h,1d,1w`), `limit` (1-500), `start_time?`, `end_time?` |
 | `get_indexer_status` | Data-source health and freshness | none |
+| `get_bm_fills` | Fills where one BalanceManager was maker (or taker): time, its side, price, qty, fee and fee token, tx | `pool`, `balance_manager_id`, `role?`, `limit`, `hours` |
+| `get_swing_range` | 1h/4h/24h range, realized vol, regime (CALM < 2%, ELEVATED 2-4%, HIGH_VOL > 4% 4h range) and a suggested rung count 3/4/5 | `pool` |
+| `get_pool_stats` | Scorecard-style stats over N hours: trades, taker buy/sell split, volume, VWAP, avg trade, range, spread | `pool`, `hours` (1-72) |
+| `estimate_fees` | Fee for a fill paid in the input token (rate x 1.25) vs in DEEP (base rate), from live on-chain rates | `pool`, `qty`, `price?`, `role` |
 
 Pool names use `BASE_QUOTE` (for example `SUI_USDC`). Input is case-insensitive, and `sui/usdc` or `SUI-USDC` also work. An unknown pool returns a clear error with suggestions; `USDC_SUI`, for example, suggests `SUI_USDC`.
 

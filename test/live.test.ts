@@ -26,13 +26,23 @@ test("exposes exactly the read-only tool set, all annotated readOnly", async () 
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
   assert.deepEqual(names, [
-    "get_indexer_status", "get_mid_price", "get_ohlcv", "get_order_book", "get_pool_params", "get_recent_trades", "get_volume", "list_pools",
+    "estimate_fees", "get_bm_fills", "get_indexer_status", "get_mid_price", "get_ohlcv", "get_order_book", "get_pool_params", "get_pool_stats",
+    "get_recent_trades", "get_swing_range", "get_volume", "list_pools",
   ]);
   for (const t of tools) {
     assert.equal(t.annotations?.readOnlyHint, true, t.name);
     assert.match(t.description ?? "", /not financial advice/i, `${t.name} disclaimer`);
     assert.doesNotMatch(t.name, /order_create|swap|transfer|sign|wallet|withdraw|deposit/);
   }
+});
+
+test("toolkit tools answer from live public data", async () => {
+  const s = (await call("get_swing_range", { pool: "SUI_USDC" })).json;
+  assert.ok(["CALM", "ELEVATED", "HIGH_VOL"].includes(s.regime));
+  const f = (await call("estimate_fees", { pool: "SUI_USDC", qty: 10, role: "taker" })).json;
+  assert.ok(f.pay_in_input_token.fee_quote_equiv >= 0);
+  const b = (await call("get_bm_fills", { pool: "SUI_USDC", balance_manager_id: "0xb7084d0abf33836f215841f58219934bf34ada8d3d9c384d2ee6192887f85471", hours: 72 })).json;
+  assert.equal(b.role, "maker"); assert.ok(Array.isArray(b.rows));
 });
 
 test("list_pools includes SUI_USDC with sane params", async () => {

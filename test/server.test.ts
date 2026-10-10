@@ -48,7 +48,7 @@ test("prompts and resources are listed and readable", async () => {
 test("static server card lists tools with inputSchema and annotations", async () => {
   const card: any = await buildServerCard(null);
   assert.equal(card.serverInfo.version, VERSION);
-  assert.equal(card.tools.length, 8);
+  assert.equal(card.tools.length, 12);
   for (const t of card.tools) {
     assert.equal(t.inputSchema.type, "object");
     assert.equal(t.annotations.readOnlyHint, true);
