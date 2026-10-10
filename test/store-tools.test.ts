@@ -4,7 +4,7 @@ import { generateKeyPairSync, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { OrderLimiter, registerStoreTools, storeOrigin, verifyRhythm, checkPayee, STORE_ORIGIN, PINNED_PAYEE } from "../src/store-tools.js";
 
-function harness(fetchImpl: any, lim = new OrderLimiter(2, 5)) {
+function harness(fetchImpl: any, lim = new OrderLimiter(2, 5, 9, 9)) {
   const tools: Record<string, any> = {};
   const wrap = (fn: any) => async (a: any) => { try { return { ok: true, data: await fn(a) }; } catch (e) { return { ok: false, err: (e as Error).message }; } };
   registerStoreTools((n, c, h) => (tools[n] = { c, h }), wrap as any, { clientId: "c1", origin: STORE_ORIGIN, fetchImpl, lim });
@@ -91,4 +91,18 @@ test("create_template_order refuses a payee that differs from the pin, and a ver
   assert.equal(r2.ok, false); assert.match(r2.err, /does NOT verify/);
   const r3 = await mk(good, "0x" + "ab".repeat(32)).create_template_order.h({ sku: "moneo" });
   assert.equal(r3.ok, true); assert.equal(r3.data.payeeVerified, true);
+});
+
+test("S5: open-hold caps per client and global, plus hourly rate", () => {
+  const now = 1_000_000_000_000;
+  const l = new OrderLimiter(10, 100, 2, 3);
+  assert.equal(l.check("a", now), null); l.hold("a", now + 1_800_000, now);
+  assert.equal(l.check("a", now), null); l.hold("a", now + 1_800_000, now);
+  assert.match(l.check("a", now) ?? "", /unpaid orders waiting/);
+  assert.equal(l.check("a", now + 1_800_001), null, "holds end when the payment window ends");
+  const g = new OrderLimiter(10, 100, 5, 2);
+  g.check("x", now); g.hold("x", now + 60_000, now); g.check("y", now); g.hold("y", now + 60_000, now);
+  assert.match(g.check("z", now) ?? "", /connector right now/);
+  const r = new OrderLimiter(1, 100, 5, 50);
+  assert.equal(r.check("c", now), null); assert.match(r.check("c", now) ?? "", /last hour/);
 });

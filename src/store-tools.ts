@@ -51,18 +51,34 @@ export function checkPayee(orderPayTo: unknown, signed: string | null, pinned: s
   return { ok: true as const, verified: Boolean(p || signed), payTo: got };
 }
 
-/** In-memory create-order brake on top of the store's own per-IP limit and amount holds. */
+/** In-memory create-order brake on top of the store's own per-IP limit and amount holds (Siona S5):
+ *  - rate: perClientPerHour new orders per client, globalPerHour for the whole hosted server;
+ *  - holds: at most maxOpenPerClient unpaid orders per client and maxOpenGlobal overall still inside their payment window,
+ *    so one client can't pin the store's unique amounts (each unpaid order holds one until it expires). */
 export class OrderLimiter {
   private hits = new Map<string, number[]>();
-  constructor(private perClientPerHour = 3, private globalPerHour = 60) {}
-  take(client: string, now = Date.now()): boolean {
+  private open = new Map<string, number[]>(); // client -> expiry ms of orders created through this server
+  constructor(private perClientPerHour = 3, private globalPerHour = 60, private maxOpenPerClient = 2, private maxOpenGlobal = 30) {}
+  private live(k: string, now: number) { const v = (this.open.get(k) ?? []).filter((e) => e > now); this.open.set(k, v); return v; }
+  /** Returns null if allowed (and counts it), else a reason. */
+  check(client: string, now = Date.now()): string | null {
     const cut = now - 3_600_000;
     const all = (this.hits.get("*") ?? []).filter((t) => t > cut);
     const mine = (this.hits.get(client) ?? []).filter((t) => t > cut);
-    if (mine.length >= this.perClientPerHour || all.length >= this.globalPerHour) { this.hits.set(client, mine); this.hits.set("*", all); return false; }
-    mine.push(now); all.push(now); this.hits.set(client, mine); this.hits.set("*", all);
+    this.hits.set(client, mine); this.hits.set("*", all);
+    if (this.live(client, now).length >= this.maxOpenPerClient) return "This client already has unpaid orders waiting. Pay or let them expire before creating another.";
+    if (this.live("*", now).length >= this.maxOpenGlobal) return "Too many unpaid orders are open through this connector right now. Try again later, or run the connector locally (npx plumbline-mcp).";
+    if (mine.length >= this.perClientPerHour || all.length >= this.globalPerHour) return "Too many new orders from this client in the last hour. Finish or reuse an existing order, or try later.";
+    mine.push(now); all.push(now);
     if (this.hits.size > 10_000) for (const [k, v] of this.hits) if (k !== "*" && !v.some((t) => t > cut)) this.hits.delete(k);
-    return true;
+    return null;
+  }
+  take(client: string, now = Date.now()): boolean { return this.check(client, now) === null; }
+  /** Record an order's payment-window end so it counts as an open hold until then. */
+  hold(client: string, expiresMs: number, now = Date.now()) {
+    const e = Number.isFinite(expiresMs) && expiresMs > now ? Math.min(expiresMs, now + 3 * 3_600_000) : now + 1_800_000;
+    this.live(client, now).push(e); this.live("*", now).push(e);
+    if (this.open.size > 10_000) for (const [k, v] of this.open) if (k !== "*" && !v.some((x) => x > now)) this.open.delete(k);
   }
 }
 export const limiter = new OrderLimiter();
@@ -118,10 +134,12 @@ export function registerStoreTools(reg: Reg, wrap: Wrap, opts: StoreToolOpts = {
     inputSchema: { sku: SKU, email: z.string().email().max(254).optional().describe("Optional receipt email") },
     annotations: { title: "Create a template order", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   }, wrap(async ({ sku, email }: { sku: string; email?: string }) => {
-    if (!lim.take(client)) throw new UserInputError("Too many new orders from this client in the last hour. Finish or reuse an existing order, or try later.");
+    const why = lim.check(client);
+    if (why) throw new UserInputError(why);
     const r = await call(f, `${origin}/api/store/order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sku, ...(email ? { email } : {}) }) });
     if (!r.ok || !r.json?.order) throw new UserInputError(`Store refused the order (${r.status}): ${r.json?.reason ?? "unknown"}`);
     const o = r.json.order;
+    lim.hold(client, Date.parse(o.expiresAt));
     const pc = checkPayee(o.payTo, await signedPayee(f, origin), opts.pinnedPayee === undefined ? PINNED_PAYEE : opts.pinnedPayee);
     if (!pc.ok) throw new UserInputError(`REFUSED: ${pc.reason}. Do not pay this order; tell your owner.`);
     return { payeeVerified: pc.verified, payeeNote: pc.verified ? "payTo matches the signed payee pin." : "The payee is not yet published in the signed versions.json. Show the FULL payTo address to your owner and get an explicit yes before paying.",
