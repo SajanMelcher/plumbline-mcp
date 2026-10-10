@@ -2,7 +2,7 @@
 # Payments stay OFF unless the payment env (PAYTO_ADDRESS etc.) is imported as Fly secrets; see deploy/DEPLOY.md.
 # The payee address is never stored in this repo.
 app = "plumbline-mcp"            # change if the name is taken
-primary_region = "iad"           # cheapest region tier ($2.19/mo for shared-cpu-1x 256MB)
+primary_region = "sjc"           # San Jose: nearest US-West region (~$2.61/mo for shared-cpu-1x 256MB always-on; iad is $2.19)
 
 [build]
   dockerfile = "Dockerfile"      # deploy/Dockerfile (paths are relative to this file)
@@ -23,9 +23,13 @@ primary_region = "iad"           # cheapest region tier ($2.19/mo for shared-cpu
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "off"     # payment state is local: run exactly ONE always-on machine
+  # Exactly ONE machine (payment state is a local file on the volume). It may SUSPEND when idle to save cost:
+  # a suspended machine resumes from a memory snapshot in well under a second, so the first MCP request after idle
+  # is held by Fly's proxy and answered. Payment state is fsync'd on every change.
+  # For always-on: auto_stop_machines = "off" + min_machines_running = 1.
+  auto_stop_machines = "suspend"
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
   [http_service.concurrency]
     type = "requests"
     soft_limit = 50

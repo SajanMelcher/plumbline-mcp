@@ -52,6 +52,26 @@ npx -y @smithery/cli@latest mcp add nazarenechalice/plumbline --client claude   
 
 You can also open the [Smithery listing](https://smithery.ai/servers/nazarenechalice/plumbline). For one-click Claude Desktop install, download the `.mcpb` bundle there.
 
+### Hosted endpoint (remote, nothing to install)
+
+A hosted instance runs at **`https://plumbline-mcp.fly.dev/mcp`** (streamable HTTP, stateless, JSON responses; health at `/health`, server card at `/.well-known/mcp/server-card.json`).
+
+```bash
+claude mcp add --transport http plumbline https://plumbline-mcp.fly.dev/mcp
+```
+
+Any client that takes a remote MCP URL (Cursor, VS Code, Claude Desktop connectors, Windsurf):
+
+```json
+{
+  "mcpServers": {
+    "plumbline": { "type": "http", "url": "https://plumbline-mcp.fly.dev/mcp" }
+  }
+}
+```
+
+The hosted endpoint gives each client **100 free tool calls per UTC day**, then **0.002 USDC per call**, prepaid in USDC on Sui mainnet in batches of about 0.01 USDC. `get_indexer_status` is always free. After the free calls, a tool returns an x402-style payment-required result with an exact amount and a private `payment_token`; see [docs/PAYMENTS.md](docs/PAYMENTS.md). The npm/stdio package stays free with no limits.
+
 ### Streamable HTTP (self-hosted)
 
 ```bash
@@ -129,7 +149,7 @@ Data sources: books, trades, volume and candles come from the public DeepBook in
 
 ## Optional: pay-per-call (off by default)
 
-Plumbline is free, and the stdio package is always free. A **self-hosted HTTP** operator can choose to meter calls, for example 100 free calls per day and then 0.002 USDC per call, paid in USDC on Sui. Metering is disabled unless `PLUMBLINE_PAYMENTS=1` is set. The server is receive-only and never holds keys. The full design and security model are in [docs/PAYMENTS.md](docs/PAYMENTS.md).
+The stdio package is always free. The [hosted endpoint](#hosted-endpoint-remote-nothing-to-install) meters calls (100 free per day, then 0.002 USDC per call). A **self-hosted HTTP** operator can choose to meter calls too, for example 100 free calls per day and then 0.002 USDC per call, paid in USDC on Sui. Metering is disabled unless `PLUMBLINE_PAYMENTS=1` is set. The server is receive-only and never holds keys. The full design and security model are in [docs/PAYMENTS.md](docs/PAYMENTS.md).
 
 ## Build from source
 
