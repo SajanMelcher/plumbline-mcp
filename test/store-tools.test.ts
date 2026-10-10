@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { OrderLimiter, registerStoreTools, storeOrigin, verifyRhythm, STORE_ORIGIN } from "../src/store-tools.js";
+import { OrderLimiter, registerStoreTools, storeOrigin, verifyRhythm, checkPayee, STORE_ORIGIN, PINNED_PAYEE } from "../src/store-tools.js";
 
 function harness(fetchImpl: any, lim = new OrderLimiter(2, 5)) {
   const tools: Record<string, any> = {};
@@ -12,9 +12,11 @@ function harness(fetchImpl: any, lim = new OrderLimiter(2, 5)) {
 }
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json" } });
 
-test("store origin is pinned: default, preview ok, anything else throws", () => {
+test("store origin is pinned (S7): default only; a preview needs PLUMBLINE_ALLOW_PREVIEW_STORE=1; anything else throws", () => {
   assert.equal(storeOrigin({}), STORE_ORIGIN);
-  assert.equal(storeOrigin({ PLUMBLINE_STORE_URL: "https://abc123.spicemelange-site.pages.dev/x" }), "https://abc123.spicemelange-site.pages.dev");
+  assert.throws(() => storeOrigin({ PLUMBLINE_STORE_URL: "https://abc123.spicemelange-site.pages.dev/x" }), /ALLOW_PREVIEW/);
+  assert.equal(storeOrigin({ PLUMBLINE_STORE_URL: "https://abc123.spicemelange-site.pages.dev/x", PLUMBLINE_ALLOW_PREVIEW_STORE: "1" }), "https://abc123.spicemelange-site.pages.dev");
+  assert.throws(() => storeOrigin({ PLUMBLINE_STORE_URL: "https://evil.example", PLUMBLINE_ALLOW_PREVIEW_STORE: "1" }));
   for (const bad of ["https://evil.example", "http://thespicemelange.org", "https://thespicemelange.org.evil.com", "https://x.spicemelange-site.pages.dev.evil.com"])
     assert.throws(() => storeOrigin({ PLUMBLINE_STORE_URL: bad }));
 });
@@ -25,8 +27,12 @@ test("registers exactly the four store tools", () => {
 
 test("create_template_order relays to the pinned store and is rate limited per client", async () => {
   const calls: string[] = [];
-  const t = harness(async (u: string, init: any) => { calls.push(`${init.method} ${u}`); return json({ ok: true, order: { orderId: "SM-ABCDEFGHJK", token: "smt_" + "a".repeat(43), payTo: "0xpay", amount: "300.000123" } }, 201); });
-  for (let i = 0; i < 2; i++) assert.equal((await t.create_template_order.h({ sku: "fish-speakers" })).ok, true);
+  const site = "/workspace/ixians/spicemelange-site/public/templates";
+  const t = harness(async (u: string, init: any) => {
+    if (u.endsWith("/templates/versions.json")) return new Response(readFileSync(`${site}/versions.json`));
+    if (u.endsWith("/templates/versions.json.sig")) return new Response(readFileSync(`${site}/versions.json.sig`, "utf8"));
+    calls.push(`${init.method} ${u}`); return json({ ok: true, order: { orderId: "SM-ABCDEFGHJK", token: "smt_" + "a".repeat(43), payTo: "0x" + "ab".repeat(32), amount: "300.000123" } }, 201); });
+  for (let i = 0; i < 2; i++) { const r = await t.create_template_order.h({ sku: "fish-speakers" }); assert.equal(r.ok, true); assert.equal(r.data.payeeVerified, false, "no payee in signed versions.json yet"); }
   const third = await t.create_template_order.h({ sku: "fish-speakers" });
   assert.equal(third.ok, false); assert.match(third.err, /Too many/);
   assert.deepEqual(calls, [`POST ${STORE_ORIGIN}/api/store/order`, `POST ${STORE_ORIGIN}/api/store/order`]);
@@ -55,4 +61,34 @@ test("rhythm: the published file verifies with the pinned key; a tampered one fa
   assert.equal(g.ok, true); assert.equal(g.data.verified, true); assert.equal(g.data.rhythm.guidanceOnly, true);
   const { privateKey } = generateKeyPairSync("ed25519");
   assert.equal(verifyRhythm(body, sign(null, body, privateKey).toString("base64")), false, "other keys are rejected");
+});
+
+test("payee pin (S2): unset today; any mismatch with the pin or the signed payee refuses", () => {
+  assert.equal(PINNED_PAYEE, null, "left unset until Sajan confirms the production payee");
+  const A = "0x" + "ab".repeat(32), B = "0x" + "cd".repeat(32);
+  assert.deepEqual(checkPayee(A, null, null), { ok: true, verified: false, payTo: A });
+  assert.equal(checkPayee(A, A, null).verified, true);
+  assert.equal(checkPayee(A.toUpperCase().replace("0X", "0x"), A, null).ok, true, "case-insensitive");
+  assert.equal(checkPayee(A, B, null).ok, false);
+  assert.equal(checkPayee(A, null, B).ok, false);
+  assert.equal(checkPayee("nonsense", null, null).ok, false);
+});
+
+test("create_template_order refuses a payee that differs from the pin, and a versions.json with a bad signature", async () => {
+  const site = "/workspace/ixians/spicemelange-site/public/templates";
+  const mk = (sig: string, pinnedPayee: string | null) => {
+    const tools: Record<string, any> = {};
+    const wrap = (fn: any) => async (a: any) => { try { return { ok: true, data: await fn(a) }; } catch (e) { return { ok: false, err: (e as Error).message }; } };
+    registerStoreTools((n, c, h) => (tools[n] = { c, h }), wrap as any, { clientId: "p", origin: STORE_ORIGIN, lim: new OrderLimiter(9, 9), pinnedPayee,
+      fetchImpl: (async (u: string) => u.endsWith("versions.json") ? new Response(readFileSync(`${site}/versions.json`)) : u.endsWith(".sig") ? new Response(sig)
+        : json({ ok: true, order: { orderId: "SM-ABCDEFGHJK", token: "smt_" + "a".repeat(43), payTo: "0x" + "ab".repeat(32), amount: "50.000001" } }, 201)) as any });
+    return tools;
+  };
+  const good = readFileSync(`${site}/versions.json.sig`, "utf8");
+  const r1 = await mk(good, "0x" + "cd".repeat(32)).create_template_order.h({ sku: "moneo" });
+  assert.equal(r1.ok, false); assert.match(r1.err, /REFUSED/);
+  const r2 = await mk(Buffer.alloc(64).toString("base64"), null).create_template_order.h({ sku: "moneo" });
+  assert.equal(r2.ok, false); assert.match(r2.err, /does NOT verify/);
+  const r3 = await mk(good, "0x" + "ab".repeat(32)).create_template_order.h({ sku: "moneo" });
+  assert.equal(r3.ok, true); assert.equal(r3.data.payeeVerified, true);
 });

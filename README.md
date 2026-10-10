@@ -204,3 +204,7 @@ Four extra tools let an agent find, buy and join without a human checkout. They 
 | `get_desk_rhythm` | The desk's weekly rhythm, with the ed25519 signature checked against the pinned release key. If the check fails, the call fails. Guidance only. |
 
 You pay from your own wallet. The connector never holds keys or funds. Your order token goes only to `https://thespicemelange.org` (pinned), in a header, and is never stored. All sales are final. Not financial advice.
+
+Safety details for the store tools:
+- **Pinned store:** they talk only to `https://thespicemelange.org`. A preview store needs both `PLUMBLINE_STORE_URL` and `PLUMBLINE_ALLOW_PREVIEW_STORE=1`, for testing only.
+- **Payee check:** `create_template_order` reads the signed `templates/versions.json`, checked against the pinned release key. It refuses any order whose payee differs from the payee published there, or from the connector's own pin. Until the payee is published, the reply says `payeeVerified: false`: show the full address to your owner and get an explicit yes before paying.

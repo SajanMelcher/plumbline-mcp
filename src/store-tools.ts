@@ -11,14 +11,44 @@ export const STORE_ORIGIN = "https://thespicemelange.org";
 export const RELEASE_KEY_B64 = "aprpUxFvDlUrkz+Mp8WjrTncgKHcNfxQJ/EJVCWaeuc=";
 const PREVIEW_RE = /^https:\/\/[a-z0-9-]{1,63}\.spicemelange-site\.pages\.dev$/;
 
-/** Order tokens only ever go to the real store or one of its Cloudflare preview deployments. Anything else fails closed. */
+/** Order tokens only ever go to the real store. A Cloudflare preview origin is accepted ONLY when the operator also sets
+ * PLUMBLINE_ALLOW_PREVIEW_STORE=1 (dev/testing; Siona S7). Anything else fails closed. */
 export function storeOrigin(env: Record<string, string | undefined> = process.env): string {
   const raw = (env.PLUMBLINE_STORE_URL ?? "").trim();
   if (!raw) return STORE_ORIGIN;
   let o: string;
   try { o = new URL(raw).origin; } catch { throw new Error("PLUMBLINE_STORE_URL is not a URL"); }
-  if (o !== STORE_ORIGIN && !PREVIEW_RE.test(o)) throw new Error(`PLUMBLINE_STORE_URL must be ${STORE_ORIGIN} or a spicemelange-site preview; got ${o}`);
-  return o;
+  if (o === STORE_ORIGIN) return o;
+  if (PREVIEW_RE.test(o) && env.PLUMBLINE_ALLOW_PREVIEW_STORE === "1") return o;
+  throw new Error(`PLUMBLINE_STORE_URL must be ${STORE_ORIGIN}` + (PREVIEW_RE.test(o) ? " (preview origins need PLUMBLINE_ALLOW_PREVIEW_STORE=1)" : `; got ${o}`));
+}
+
+/** Payee pin (Siona S2). Set to the production Sui payee ONLY after Sajan confirms it; until then the pin comes from the
+ * signed versions.json alone (field `store.payTo`), and orders are marked unverified if that field is absent. */
+export const PINNED_PAYEE: string | null = null;
+const norm = (a: unknown) => (typeof a === "string" && /^0x[0-9a-fA-F]{1,64}$/.test(a) ? "0x" + a.slice(2).toLowerCase().padStart(64, "0") : null);
+
+/** Reads the signed versions.json (ed25519, pinned release key) and returns its published payee, if any. Throws if the signature fails. */
+export async function signedPayee(f: typeof fetch, origin: string): Promise<string | null> {
+  let a: Response, b: Response;
+  try {
+    [a, b] = await Promise.all([f(`${origin}/templates/versions.json`, { redirect: "error", signal: AbortSignal.timeout(15_000) }), f(`${origin}/templates/versions.json.sig`, { redirect: "error", signal: AbortSignal.timeout(15_000) })]);
+  } catch (e) { throw new UpstreamError(`versions.json unreachable (${(e as Error).message})`); }
+  if (!a.ok || !b.ok) throw new UpstreamError(`versions.json unreachable (HTTP ${a.status}/${b.status})`);
+  const body = Buffer.from(await a.arrayBuffer());
+  if (!verifyRhythm(body, await b.text())) throw new UserInputError("versions.json signature does NOT verify with the pinned release key; refusing to trust the store's payee.");
+  const doc = JSON.parse(body.toString("utf8"));
+  return norm(doc?.store?.payTo);
+}
+
+/** Decide whether an order's payTo may be shown as payable. Mismatch with any pin = refuse. */
+export function checkPayee(orderPayTo: unknown, signed: string | null, pinned: string | null = PINNED_PAYEE) {
+  const got = norm(orderPayTo);
+  if (!got) return { ok: false as const, reason: "order has no valid payTo" };
+  const p = norm(pinned);
+  if (p && got !== p) return { ok: false as const, reason: "payTo differs from the connector's pinned payee" };
+  if (signed && got !== signed) return { ok: false as const, reason: "payTo differs from the payee in the signed versions.json" };
+  return { ok: true as const, verified: Boolean(p || signed), payTo: got };
 }
 
 /** In-memory create-order brake on top of the store's own per-IP limit and amount holds. */
@@ -59,7 +89,7 @@ export function verifyRhythm(body: Buffer, sigB64: string, keyB64 = RELEASE_KEY_
 
 type Reg = (name: string, config: any, handler: (...a: any[]) => Promise<any>) => unknown;
 type Wrap = <A>(fn: (args: A) => Promise<unknown>) => (args: A) => Promise<any>;
-export interface StoreToolOpts { clientId?: string; origin?: string; fetchImpl?: F; lim?: OrderLimiter }
+export interface StoreToolOpts { clientId?: string; origin?: string; fetchImpl?: F; lim?: OrderLimiter; pinnedPayee?: string | null }
 
 export function registerStoreTools(reg: Reg, wrap: Wrap, opts: StoreToolOpts = {}) {
   const origin = opts.origin ?? storeOrigin();
@@ -92,7 +122,10 @@ export function registerStoreTools(reg: Reg, wrap: Wrap, opts: StoreToolOpts = {
     const r = await call(f, `${origin}/api/store/order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sku, ...(email ? { email } : {}) }) });
     if (!r.ok || !r.json?.order) throw new UserInputError(`Store refused the order (${r.status}): ${r.json?.reason ?? "unknown"}`);
     const o = r.json.order;
-    return { orderId: o.orderId, token: o.token, payTo: o.payTo, coinType: o.coinType, amount: o.amount, amountAtomic: o.amountAtomic, expiresAt: o.expiresAt, howToPay: o.howToPay,
+    const pc = checkPayee(o.payTo, await signedPayee(f, origin), opts.pinnedPayee === undefined ? PINNED_PAYEE : opts.pinnedPayee);
+    if (!pc.ok) throw new UserInputError(`REFUSED: ${pc.reason}. Do not pay this order; tell your owner.`);
+    return { payeeVerified: pc.verified, payeeNote: pc.verified ? "payTo matches the signed payee pin." : "The payee is not yet published in the signed versions.json. Show the FULL payTo address to your owner and get an explicit yes before paying.",
+      orderId: o.orderId, token: o.token, payTo: o.payTo, coinType: o.coinType, amount: o.amount, amountAtomic: o.amountAtomic, expiresAt: o.expiresAt, howToPay: o.howToPay,
       warning: "Keep the token private: it is the only key to your download and re-downloads. Pay the EXACT amount in one wallet transfer. Then call check_template_order with order_id, token and the transaction digest." };
   }));
 
