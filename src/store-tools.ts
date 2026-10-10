@@ -109,8 +109,14 @@ export function storeBucket(clientId: string): string {
   const m = /^ip:([0-9a-f]{4}:[0-9a-f]{4}:[0-9a-f]{4}):[0-9a-f]{4}::\/64$/.exec(clientId);
   return m ? `ip:${m[1]}::/48` : clientId;
 }
-/** Hashed client id forwarded to the store (never the raw IP). */
-export const forwardedClient = (bucket: string) => createHash("sha256").update(`plumbline:store-client:${bucket}`).digest("hex").slice(0, 24);
+/** Hashed client id forwarded to the store (never the raw IP), salted with a secret (Fly secret PLUMBLINE_STORE_CLIENT_SALT)
+ *  so the store, logs or anyone holding the id can't brute-force it back to an IPv4 address. */
+export const forwardedClient = (bucket: string, salt: string) =>
+  createHash("sha256").update(`plumbline:store-client:${salt}:${bucket}`).digest("hex").slice(0, 24);
+export function clientSalt(env: NodeJS.ProcessEnv = process.env): string | null {
+  const s = (env.PLUMBLINE_STORE_CLIENT_SALT ?? "").trim();
+  return s.length >= 16 ? s : null;
+}
 /** S5: the store key (shared secret) the store verifies before trusting x-connector-client. Unset = no forwarding. */
 export function connectorKey(env: NodeJS.ProcessEnv = process.env): string | null {
   const k = (env.PLUMBLINE_STORE_CONNECTOR_KEY ?? "").trim();
@@ -119,7 +125,7 @@ export function connectorKey(env: NodeJS.ProcessEnv = process.env): string | nul
 
 type Reg = (name: string, config: any, handler: (...a: any[]) => Promise<any>) => unknown;
 type Wrap = <A>(fn: (args: A) => Promise<unknown>) => (args: A) => Promise<any>;
-export interface StoreToolOpts { clientId?: string; origin?: string; fetchImpl?: F; lim?: OrderLimiter; pinnedPayee?: string | null; connectorKey?: string | null }
+export interface StoreToolOpts { clientId?: string; origin?: string; fetchImpl?: F; lim?: OrderLimiter; pinnedPayee?: string | null; connectorKey?: string | null; clientSalt?: string | null }
 
 export function registerStoreTools(reg: Reg, wrap: Wrap, opts: StoreToolOpts = {}) {
   const origin = opts.origin ?? storeOrigin();
@@ -127,7 +133,9 @@ export function registerStoreTools(reg: Reg, wrap: Wrap, opts: StoreToolOpts = {
   const lim = opts.lim ?? limiter;
   const client = storeBucket(opts.clientId ?? "anonymous");
   const ckey = opts.connectorKey === undefined ? connectorKey() : opts.connectorKey;
-  const fwd: Record<string, string> = ckey ? { "x-connector-key": ckey, "x-connector-client": forwardedClient(client) } : {};
+  const salt = opts.clientSalt === undefined ? clientSalt() : opts.clientSalt;
+  // Forward only with BOTH the store key and the salt; otherwise the store applies its plain per-IP cap.
+  const fwd: Record<string, string> = ckey && salt ? { "x-connector-key": ckey, "x-connector-client": forwardedClient(client, salt) } : {};
   const NOTE = "Educational templates, not financial advice; no returns promised. All sales final, except where the law requires otherwise. You pay from your own wallet; this connector never holds keys or funds.";
 
   reg("list_templates", {

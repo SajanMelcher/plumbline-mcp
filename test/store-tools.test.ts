@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { OrderLimiter, registerStoreTools, storeBucket, forwardedClient, connectorKey, storeOrigin, verifyRhythm, checkPayee, STORE_ORIGIN, PINNED_PAYEE } from "../src/store-tools.js";
+import { OrderLimiter, registerStoreTools, storeBucket, forwardedClient, connectorKey, clientSalt, storeOrigin, verifyRhythm, checkPayee, STORE_ORIGIN, PINNED_PAYEE } from "../src/store-tools.js";
 
 function harness(fetchImpl: any, lim = new OrderLimiter(2, 5, 9, 9)) {
   const tools: Record<string, any> = {};
@@ -111,17 +111,19 @@ test("S5: /48 grouping, hashed forwarded client, store key only when set", async
   assert.equal(storeBucket("ip:2001:0db8:0001:0002::/64"), "ip:2001:0db8:0001::/48");
   assert.equal(storeBucket("ip:2001:0db8:0001:ffff::/64"), "ip:2001:0db8:0001::/48");
   assert.equal(storeBucket("ip:203.0.113.9"), "ip:203.0.113.9");
-  assert.match(forwardedClient("ip:203.0.113.9"), /^[0-9a-f]{24}$/);
+  assert.match(forwardedClient("ip:203.0.113.9", "s".repeat(16)), /^[0-9a-f]{24}$/);
+  assert.notEqual(forwardedClient("ip:203.0.113.9", "a".repeat(16)), forwardedClient("ip:203.0.113.9", "b".repeat(16)), "salted");
+  assert.equal(clientSalt({ PLUMBLINE_STORE_CLIENT_SALT: "short" } as any), null);
   assert.equal(connectorKey({ PLUMBLINE_STORE_CONNECTOR_KEY: "short" } as any), null);
   const seen: any[] = [];
   const fakeFetch: any = async (url: string, init: any) => { seen.push(init?.headers ?? {}); return new Response(JSON.stringify({ ok: true, order: { orderId: "SM-X", token: "t", payTo: "0x" + "ab".repeat(32), amount: "1", expiresAt: new Date(Date.now() + 1e6).toISOString() } }), { status: 201, headers: { "content-type": "application/json" } }); };
-  for (const key of ["k".repeat(40), null]) {
+  for (const [key, salt] of [["k".repeat(40), "z".repeat(24)], [null, "z".repeat(24)], ["k".repeat(40), null]] as const) {
     seen.length = 0;
     const tools: Record<string, any> = {};
-    registerStoreTools((n: string, _c: any, h: any) => (tools[n] = h), ((fn: any) => fn) as any, { clientId: "ip:2001:0db8:0001:0002::/64", fetchImpl: fakeFetch, lim: new OrderLimiter(9, 9, 9, 9), pinnedPayee: null, connectorKey: key });
+    registerStoreTools((n: string, _c: any, h: any) => (tools[n] = h), ((fn: any) => fn) as any, { clientId: "ip:2001:0db8:0001:0002::/64", fetchImpl: fakeFetch, lim: new OrderLimiter(9, 9, 9, 9), pinnedPayee: null, connectorKey: key, clientSalt: salt });
     try { await tools.create_template_order({ sku: "moneo" }); } catch { /* payee lookups may fail on the fake; headers are what we check */ }
     const h = seen[0];
-    if (key) { assert.equal(h["x-connector-key"], key); assert.equal(h["x-connector-client"], forwardedClient("ip:2001:0db8:0001::/48")); }
+    if (key && salt) { assert.equal(h["x-connector-key"], key); assert.equal(h["x-connector-client"], forwardedClient("ip:2001:0db8:0001::/48", salt)); }
     else assert.equal(h["x-connector-key"], undefined);
   }
 });
