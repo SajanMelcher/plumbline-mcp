@@ -14,11 +14,11 @@ let shared: DeepBookClient | undefined;
 export function createServer(opts: { config?: Config; payments?: PaymentRuntime | null; clientId?: string } = {}): McpServer {
   const db = opts.config ? new DeepBookClient(opts.config) : (shared ??= new DeepBookClient(loadConfig()));
   const server = new McpServer(
-    { name: NAME, version: VERSION },
+    { name: NAME, title: "The Spice Melange Trading Desk: DeepBook market data connector", version: VERSION },
     {
       capabilities: { tools: {}, prompts: {}, resources: {} },
       instructions:
-        `Plumbline: read-only Sui DeepBook v3 market data (pools, mid, depth, volume, fees, trades, OHLCV). ` +
+        `The Spice Melange Trading Desk (DeepBook market data connector): read-only Sui DeepBook v3 market data (pools, mid, depth, volume, fees, trades, OHLCV). ` +
         `Pool names are BASE_QUOTE, e.g. SUI_USDC; call list_pools first if unsure. No keys, no wallets, no trading. ${DISCLAIMER}` +
         (opts.payments ? ` ${opts.payments.describe()}` : ""),
     },

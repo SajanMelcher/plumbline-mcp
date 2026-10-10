@@ -17,7 +17,7 @@ export async function buildServerCard(payments: PaymentRuntime | null): Promise<
     return {
       serverInfo: {
         name: NAME,
-        title: "Plumbline: DeepBook Market Data (read-only)",
+        title: "The Spice Melange Trading Desk: DeepBook market data connector (read-only)",
         version: VERSION,
         description: "Free, read-only Sui DeepBook v3 market data for AI agents. No keys, no wallet. Education only, not financial advice.",
         websiteUrl: "https://github.com/SajanMelcher/plumbline-mcp",

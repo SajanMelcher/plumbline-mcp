@@ -480,7 +480,7 @@ export class PaymentRuntime {
     const pr = {
       x402Version: 2,
       error,
-      resource: { url: `mcp://tool/${toolName}`, description: `Plumbline ${toolName} (read-only DeepBook market data)`, mimeType: "application/json" },
+      resource: { url: `mcp://tool/${toolName}`, description: `The Spice Melange Trading Desk ${toolName} (read-only DeepBook market data)`, mimeType: "application/json" },
       accepts: [
         {
           scheme: SCHEME,

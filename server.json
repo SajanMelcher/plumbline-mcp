@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.SajanMelcher/plumbline-mcp",
-  "title": "Plumbline: DeepBook Market Data",
+  "title": "The Spice Melange Trading Desk: DeepBook market data connector",
   "description": "Read-only Sui DeepBook v3 market data: pools, mid, depth, volume, fees, trades, OHLCV. No keys.",
   "repository": {
     "url": "https://github.com/SajanMelcher/plumbline-mcp",

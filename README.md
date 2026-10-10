@@ -1,11 +1,13 @@
-# Plumbline: read-only DeepBook v3 market data for AI agents
+# The Spice Melange Trading Desk: DeepBook market data connector
+
+Read-only DeepBook v3 market data for AI agents. (Package, server id and endpoint keep the name `plumbline`.)
 
 [![npm](https://img.shields.io/npm/v/plumbline-mcp)](https://www.npmjs.com/package/plumbline-mcp)
 [![Smithery](https://img.shields.io/badge/Smithery-plumbline-ff6b2c)](https://smithery.ai/servers/nazarenechalice/plumbline)
 [![MCP](https://img.shields.io/badge/MCP-stdio%20%7C%20HTTP-6f42c1)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-Plumbline is a free, **read-only** [Model Context Protocol](https://modelcontextprotocol.io) server for **Sui DeepBook v3** market data. It gives agents pools, mid price and spread, order book depth, volume, live on-chain fees, recent trades and OHLCV candles.
+The Spice Melange Trading Desk (DeepBook market data connector, package `plumbline-mcp`) is a free, **read-only** [Model Context Protocol](https://modelcontextprotocol.io) server for **Sui DeepBook v3** market data. It gives agents pools, mid price and spread, order book depth, volume, live on-chain fees, recent trades and OHLCV candles.
 
 - **No API keys, no wallet, no signing, no trading.** Every tool is annotated `readOnlyHint: true`.
 - **Small outputs.** Compact JSON with column/row arrays for series and sensible rounding.

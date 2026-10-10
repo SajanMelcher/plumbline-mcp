@@ -2,9 +2,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { DISCLAIMER } from "./tools.js";
 
-const GUIDE = `# Plumbline guide
+const GUIDE = `# The Spice Melange Trading Desk guide
 
-Plumbline is a read-only MCP server for Sui DeepBook v3 market data. It has no keys, no wallet and no trading.
+The Spice Melange Trading Desk (DeepBook market data connector, server id plumbline) is a read-only MCP server for Sui DeepBook v3 market data. It has no keys, no wallet and no trading.
 
 ## Pool names
 Pools are named BASE_QUOTE, for example SUI_USDC, DEEP_USDC or WAL_USDC. Input is case-insensitive, and "sui/usdc" and "SUI-USDC" also work.
@@ -36,13 +36,13 @@ export function registerPromptsAndResources(server: McpServer): void {
   server.registerResource(
     "guide",
     "plumbline://guide",
-    { title: "Plumbline guide", description: "Pool naming, tools, data sources and disclaimer", mimeType: "text/markdown" },
+    { title: "The Spice Melange Trading Desk guide", description: "Pool naming, tools, data sources and disclaimer", mimeType: "text/markdown" },
     async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: GUIDE }] }),
   );
   server.registerResource(
     "disclaimer",
     "plumbline://disclaimer",
-    { title: "Disclaimer", description: "Education-only disclaimer for all Plumbline data", mimeType: "text/plain" },
+    { title: "Disclaimer", description: "Education-only disclaimer for all The Spice Melange Trading Desk data", mimeType: "text/plain" },
     async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/plain", text: DISCLAIMER }] }),
   );
 
