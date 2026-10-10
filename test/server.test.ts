@@ -48,10 +48,10 @@ test("prompts and resources are listed and readable", async () => {
 test("static server card lists tools with inputSchema and annotations", async () => {
   const card: any = await buildServerCard(null);
   assert.equal(card.serverInfo.version, VERSION);
-  assert.equal(card.tools.length, 12);
+  assert.equal(card.tools.length, 16);
   for (const t of card.tools) {
     assert.equal(t.inputSchema.type, "object");
-    assert.equal(t.annotations.readOnlyHint, true);
+    assert.equal(t.annotations.readOnlyHint, !["check_template_order", "create_template_order"].includes(t.name), t.name);
     assert.ok(t.description.length > 20);
   }
   assert.equal(card.prompts.length, 3);

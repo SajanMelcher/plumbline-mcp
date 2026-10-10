@@ -28,9 +28,12 @@ test("exposes exactly the read-only tool set, all annotated readOnly", async () 
   assert.deepEqual(names, [
     "estimate_fees", "get_bm_fills", "get_indexer_status", "get_mid_price", "get_ohlcv", "get_order_book", "get_pool_params", "get_pool_stats",
     "get_recent_trades", "get_swing_range", "get_volume", "list_pools",
-  ]);
+    "check_template_order", "create_template_order", "get_desk_rhythm", "list_templates",
+  ].sort());
+  const writes = ["check_template_order", "create_template_order"]; // store orders only: no keys, no funds, nothing destructive
   for (const t of tools) {
-    assert.equal(t.annotations?.readOnlyHint, true, t.name);
+    assert.equal(t.annotations?.readOnlyHint, !writes.includes(t.name), t.name);
+    assert.equal(t.annotations?.destructiveHint ?? false, false, t.name);
     assert.match(t.description ?? "", /not financial advice/i, `${t.name} disclaimer`);
     assert.doesNotMatch(t.name, /order_create|swap|transfer|sign|wallet|withdraw|deposit/);
   }

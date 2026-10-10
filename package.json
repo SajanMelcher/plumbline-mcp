@@ -1,6 +1,6 @@
 {
   "name": "plumbline-mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "mcpName": "io.github.SajanMelcher/plumbline-mcp",
   "description": "Plumbline: a free, read-only MCP server for Sui DeepBook v3 market data (pools, mid price, depth, volume, fees, trades, OHLCV). Education/information only, not financial advice.",
   "license": "MIT",

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { PaymentRuntime } from "./payments.js";
 import { registerDeskTools, DESK_TOOLS } from "./desk-tools.js";
+import { registerStoreTools } from "./store-tools.js";
 import {
   DeepBookClient,
   OHLCV_INTERVALS,
@@ -475,4 +476,7 @@ export function registerTools(server: McpServer, db: DeepBookClient, opts: Regis
 
   // 9-12. agent toolkit (read-only; metered like the data tools)
   registerDeskTools(reg, wrap as any, db, poolArg, READ_ONLY, DISCLAIMER);
+
+  // 13-16. store + desk join tools (free; never metered; the agent pays the store from its own wallet)
+  registerStoreTools(reg, wrap as any, { clientId });
 }

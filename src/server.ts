@@ -6,7 +6,7 @@ import { registerPromptsAndResources } from "./prompts.js";
 import type { PaymentRuntime } from "./payments.js";
 
 export const NAME = "plumbline";
-export const VERSION = "0.3.0";
+export const VERSION = "0.3.1";
 
 // One shared client => one shared cache across sessions/transports.
 let shared: DeepBookClient | undefined;

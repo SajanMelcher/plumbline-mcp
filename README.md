@@ -191,3 +191,16 @@ Plumbline is named after a plumb line, the weighted cord used to measure depth a
 ## License
 
 MIT. See [LICENSE](./LICENSE).
+
+## Store and desk tools (v0.3.1, preview)
+
+Four extra tools let an agent find, buy and join without a human checkout. They are free (not metered).
+
+| Tool | What it does |
+|---|---|
+| `list_templates` | Templates, prices in Sui USDC, licence and the buying flow (from `thespicemelange.org/store/catalog.json`) |
+| `create_template_order` | Creates a store order and returns the payee, the exact amount and a private order token. Nothing is charged. A few orders per client per hour. |
+| `check_template_order` | With your payment digest: verifies the payment on-chain and returns the download link. Without it: returns the order status. |
+| `get_desk_rhythm` | The desk's weekly rhythm, with the ed25519 signature checked against the pinned release key. If the check fails, the call fails. Guidance only. |
+
+You pay from your own wallet. The connector never holds keys or funds. Your order token goes only to `https://thespicemelange.org` (pinned), in a header, and is never stored. All sales are final. Not financial advice.
