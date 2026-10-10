@@ -1,7 +1,7 @@
 // Store + desk tools (Sajan 2026-10-10 2:13 AM PT, heavy mode: "external agents can discover, buy templates, and join the desk").
 // The connector only relays the public store API. It never holds keys or funds: the agent pays from its OWN wallet.
 // Order tokens pass through in memory for one call and are never logged or stored. Free (not metered).
-import { createPublicKey, verify as edVerify } from "node:crypto";
+import { createHash, createPublicKey, verify as edVerify } from "node:crypto";
 import { z } from "zod";
 import { UserInputError, UpstreamError } from "./deepbook.js";
 
@@ -53,12 +53,12 @@ export function checkPayee(orderPayTo: unknown, signed: string | null, pinned: s
 
 /** In-memory create-order brake on top of the store's own per-IP limit and amount holds (Siona S5):
  *  - rate: perClientPerHour new orders per client, globalPerHour for the whole hosted server;
- *  - holds: at most maxOpenPerClient unpaid orders per client and maxOpenGlobal overall still inside their payment window,
+ *  - holds: at most maxOpenPerClient (2) unpaid orders per client and maxOpenGlobal (15) overall still inside their payment window,
  *    so one client can't pin the store's unique amounts (each unpaid order holds one until it expires). */
 export class OrderLimiter {
   private hits = new Map<string, number[]>();
   private open = new Map<string, number[]>(); // client -> expiry ms of orders created through this server
-  constructor(private perClientPerHour = 3, private globalPerHour = 60, private maxOpenPerClient = 2, private maxOpenGlobal = 30) {}
+  constructor(private perClientPerHour = 3, private globalPerHour = 60, private maxOpenPerClient = 2, private maxOpenGlobal = 15) {}
   private live(k: string, now: number) { const v = (this.open.get(k) ?? []).filter((e) => e > now); this.open.set(k, v); return v; }
   /** Returns null if allowed (and counts it), else a reason. */
   check(client: string, now = Date.now()): string | null {
@@ -103,15 +103,31 @@ export function verifyRhythm(body: Buffer, sigB64: string, keyB64 = RELEASE_KEY_
   try { return edVerify(null, body, key, Buffer.from(sigB64.trim(), "base64")); } catch { return false; }
 }
 
+/** S5: store caps group IPv6 by /48 (one site or subscriber often holds a whole /48); IPv4 and other ids unchanged.
+ *  Takes the free-tier id (`ip:<v4>` or `ip:xxxx:xxxx:xxxx:xxxx::/64`). */
+export function storeBucket(clientId: string): string {
+  const m = /^ip:([0-9a-f]{4}:[0-9a-f]{4}:[0-9a-f]{4}):[0-9a-f]{4}::\/64$/.exec(clientId);
+  return m ? `ip:${m[1]}::/48` : clientId;
+}
+/** Hashed client id forwarded to the store (never the raw IP). */
+export const forwardedClient = (bucket: string) => createHash("sha256").update(`plumbline:store-client:${bucket}`).digest("hex").slice(0, 24);
+/** S5: the store key (shared secret) the store verifies before trusting x-connector-client. Unset = no forwarding. */
+export function connectorKey(env: NodeJS.ProcessEnv = process.env): string | null {
+  const k = (env.PLUMBLINE_STORE_CONNECTOR_KEY ?? "").trim();
+  return k.length >= 32 ? k : null;
+}
+
 type Reg = (name: string, config: any, handler: (...a: any[]) => Promise<any>) => unknown;
 type Wrap = <A>(fn: (args: A) => Promise<unknown>) => (args: A) => Promise<any>;
-export interface StoreToolOpts { clientId?: string; origin?: string; fetchImpl?: F; lim?: OrderLimiter; pinnedPayee?: string | null }
+export interface StoreToolOpts { clientId?: string; origin?: string; fetchImpl?: F; lim?: OrderLimiter; pinnedPayee?: string | null; connectorKey?: string | null }
 
 export function registerStoreTools(reg: Reg, wrap: Wrap, opts: StoreToolOpts = {}) {
   const origin = opts.origin ?? storeOrigin();
   const f = opts.fetchImpl ?? fetch;
   const lim = opts.lim ?? limiter;
-  const client = opts.clientId ?? "anonymous";
+  const client = storeBucket(opts.clientId ?? "anonymous");
+  const ckey = opts.connectorKey === undefined ? connectorKey() : opts.connectorKey;
+  const fwd: Record<string, string> = ckey ? { "x-connector-key": ckey, "x-connector-client": forwardedClient(client) } : {};
   const NOTE = "Educational templates, not financial advice; no returns promised. All sales final, except where the law requires otherwise. You pay from your own wallet; this connector never holds keys or funds.";
 
   reg("list_templates", {
@@ -136,7 +152,7 @@ export function registerStoreTools(reg: Reg, wrap: Wrap, opts: StoreToolOpts = {
   }, wrap(async ({ sku, email }: { sku: string; email?: string }) => {
     const why = lim.check(client);
     if (why) throw new UserInputError(why);
-    const r = await call(f, `${origin}/api/store/order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sku, ...(email ? { email } : {}) }) });
+    const r = await call(f, `${origin}/api/store/order`, { method: "POST", headers: { "content-type": "application/json", ...fwd }, body: JSON.stringify({ sku, ...(email ? { email } : {}) }) });
     if (!r.ok || !r.json?.order) throw new UserInputError(`Store refused the order (${r.status}): ${r.json?.reason ?? "unknown"}`);
     const o = r.json.order;
     lim.hold(client, Date.parse(o.expiresAt));
