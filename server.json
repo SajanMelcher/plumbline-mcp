@@ -15,13 +15,13 @@
       "sizes": ["512x512"]
     }
   ],
-  "version": "0.3.2",
+  "version": "0.3.3",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "plumbline-mcp",
-      "version": "0.3.2",
+      "version": "0.3.3",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

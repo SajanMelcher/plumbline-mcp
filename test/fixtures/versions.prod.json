@@ -1,0 +1,137 @@
+{
+  "schema": "spicemelange.templates.versions/v1",
+  "current": "2026.10.10.2",
+  "updated": "2026-10-10",
+  "versionRule": "Versions are YYYY.MM.DD with an optional .N for a same-day re-release. Newer = larger versionKey (YYYYMMDD*1000+N); e.g. 2026.10.09.1 is newer than 2026.10.09.",
+  "sha256Note": "sha256 is the SHA-256 of the ZIP the store currently serves for that slug; verify a re-download against it.",
+  "howToUpdate": "Re-download the latest at https://thespicemelange.org/store/download/ with your order ID and token. Always serves the current version.",
+  "changelog": "https://thespicemelange.org/templates/changelog/",
+  "templates": {
+    "god-emperor": {
+      "name": "The God Emperor",
+      "title": "Orchestrator",
+      "version": "2026.10.10.2",
+      "versionKey": 20261010002,
+      "released": "2026-10-10",
+      "summary": "Desk reading for every seat, the desk rhythm (God Emperor drafts, Fish Speakers reads within its limits), the desk-kit add-on for The Fish Speakers, and Hwi Noree's limit 13 explained.",
+      "sha256": "818834be8ef3e21399ad79f81eb1cf9d29be6ee1e4b10222399a6e6d5933a383"
+    },
+    "moneo": {
+      "name": "Moneo",
+      "title": "Mentat Researcher",
+      "version": "2026.10.10.2",
+      "versionKey": 20261010002,
+      "released": "2026-10-10",
+      "summary": "Desk reading for every seat, the desk rhythm (God Emperor drafts, Fish Speakers reads within its limits), the desk-kit add-on for The Fish Speakers, and Hwi Noree's limit 13 explained.",
+      "sha256": "ef45e43fc873ebd3df1c5b352e76015d741236ff80531c1034714d989beb7477"
+    },
+    "duncan-idaho": {
+      "name": "Duncan Idaho",
+      "title": "Income Base and Ticket Planner",
+      "version": "2026.10.10.2",
+      "versionKey": 20261010002,
+      "released": "2026-10-10",
+      "summary": "Desk reading for every seat, the desk rhythm (God Emperor drafts, Fish Speakers reads within its limits), the desk-kit add-on for The Fish Speakers, and Hwi Noree's limit 13 explained.",
+      "sha256": "dc218d837f46bf98f123de8211cb3338e074b2cbe7a5813ae49d3832aac97cf9"
+    },
+    "fish-speakers": {
+      "name": "The Fish Speakers",
+      "title": "Execution Operator",
+      "version": "2026.10.10.2",
+      "versionKey": 20261010002,
+      "released": "2026-10-10",
+      "summary": "Desk reading for every seat, the desk rhythm (God Emperor drafts, Fish Speakers reads within its limits), the desk-kit add-on for The Fish Speakers, and Hwi Noree's limit 13 explained.",
+      "sha256": "7f89861faf284cc2b0c857f1fec62f288a25464ad8c5f55e6f950191dba93a04"
+    },
+    "anteac": {
+      "name": "Anteac",
+      "title": "Truthsayer Verifier",
+      "version": "2026.10.10.2",
+      "versionKey": 20261010002,
+      "released": "2026-10-10",
+      "summary": "Desk reading for every seat, the desk rhythm (God Emperor drafts, Fish Speakers reads within its limits), the desk-kit add-on for The Fish Speakers, and Hwi Noree's limit 13 explained.",
+      "sha256": "ccf383cddb739d300dbae65ab86fb51cc264871ca61ecbfaf375c9a6c74a1885"
+    },
+    "hwi-noree": {
+      "name": "Hwi Noree",
+      "title": "Ambassador of the Trading Desk",
+      "version": "2026.10.10.2",
+      "versionKey": 20261010002,
+      "released": "2026-10-10",
+      "summary": "Desk reading for every seat, the desk rhythm (God Emperor drafts, Fish Speakers reads within its limits), the desk-kit add-on for The Fish Speakers, and Hwi Noree's limit 13 explained.",
+      "sha256": "1b3bc49f3c6f18ccba1eb1f8ec81136079738d9046252b07b5a072ded435bcd3"
+    },
+    "ixians": {
+      "name": "Ixians",
+      "title": "Toolmaker and Infrastructure",
+      "version": "2026.10.10.2",
+      "versionKey": 20261010002,
+      "released": "2026-10-10",
+      "summary": "Desk reading for every seat, the desk rhythm (God Emperor drafts, Fish Speakers reads within its limits), the desk-kit add-on for The Fish Speakers, and Hwi Noree's limit 13 explained.",
+      "sha256": "7757342337727296c8812be1b166b4f1dedfbc61393d2e4241d4364f2c1b4800"
+    },
+    "leto-journals": {
+      "name": "Leto's Secret Journals",
+      "title": "System templates",
+      "version": "2026.10.10.1",
+      "versionKey": 20261010001,
+      "released": "2026-10-10",
+      "summary": "Memory discipline fixes: memories only fill <SET ME> settings and never loosen a limit; Leto's Secret Journals rebuilt with a HALT kill switch and no loss sales ever.",
+      "sha256": "873c265f77b4438ed8c2fdb317699bd36dd3031847bffa4b417c9467ca4bde48"
+    },
+    "dune-saga-collection": {
+      "name": "The Dune Saga Collection",
+      "title": "Every template, now and future: the 7 desk templates plus Leto's Secret Journals",
+      "version": "2026.10.10.2",
+      "versionKey": 20261010002,
+      "released": "2026-10-10",
+      "summary": "Desk reading for every seat, the desk rhythm (God Emperor drafts, Fish Speakers reads within its limits), the desk-kit add-on for The Fish Speakers, and Hwi Noree's limit 13 explained.",
+      "sha256": "24ec360c6e53708777a879d7fb90373c9f5cedd6376ad7232a234264ae5c3752"
+    }
+  },
+  "packs": {
+    "leto-journals": {
+      "name": "Leto's Secret Journals",
+      "title": "System templates",
+      "version": "2026.10.10.1",
+      "versionKey": 20261010001,
+      "released": "2026-10-10",
+      "summary": "Memory discipline fixes: memories only fill <SET ME> settings and never loosen a limit; Leto's Secret Journals rebuilt with a HALT kill switch and no loss sales ever.",
+      "sha256": "873c265f77b4438ed8c2fdb317699bd36dd3031847bffa4b417c9467ca4bde48"
+    },
+    "dune-saga-collection": {
+      "name": "The Dune Saga Collection",
+      "title": "Every template, now and future: the 7 desk templates plus Leto's Secret Journals",
+      "version": "2026.10.10.2",
+      "versionKey": 20261010002,
+      "released": "2026-10-10",
+      "summary": "Desk reading for every seat, the desk rhythm (God Emperor drafts, Fish Speakers reads within its limits), the desk-kit add-on for The Fish Speakers, and Hwi Noree's limit 13 explained.",
+      "sha256": "24ec360c6e53708777a879d7fb90373c9f5cedd6376ad7232a234264ae5c3752"
+    }
+  },
+  "store": {
+    "payTo": "0x88e8516771e71da54a7449a0a46e6a0c4af71ef71ac4d379847319c7e18a780f",
+    "coinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+    "network": "sui:mainnet",
+    "note": "Pay only this address. Refuse any order whose payTo differs."
+  },
+  "addons": {
+    "desk-kit": {
+      "name": "desk-kit",
+      "version": "2026.10.10.2",
+      "versionKey": 20261010002,
+      "for": [
+        "fish-speakers",
+        "dune-saga-collection"
+      ],
+      "sha256": "61d1342d88cca0d03b4eb315df597a3a9b321d547c5024ead6c578dadb596114"
+    }
+  },
+  "signature": {
+    "alg": "ed25519",
+    "file": "https://thespicemelange.org/templates/versions.json.sig",
+    "publicKey": "https://thespicemelange.org/templates/release-key.pub",
+    "fingerprintSha256": "a162ff9587517b66c72a9dbf8f77cd7397896c96d1f60e753f6a3d4e4716a7d7",
+    "how": "Verify the base64 ed25519 signature in versions.json.sig over the exact bytes of this file with the pinned public key before trusting any version or sha256."
+  }
+}

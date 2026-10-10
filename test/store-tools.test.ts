@@ -31,8 +31,8 @@ test("create_template_order relays to the pinned store and is rate limited per c
   const t = harness(async (u: string, init: any) => {
     if (u.endsWith("/templates/versions.json")) return new Response(readFileSync(`${site}/versions.json`));
     if (u.endsWith("/templates/versions.json.sig")) return new Response(readFileSync(`${site}/versions.json.sig`, "utf8"));
-    calls.push(`${init.method} ${u}`); return json({ ok: true, order: { orderId: "SM-ABCDEFGHJK", token: "smt_" + "a".repeat(43), payTo: "0x" + "ab".repeat(32), amount: "300.000123" } }, 201); });
-  for (let i = 0; i < 2; i++) { const r = await t.create_template_order.h({ sku: "fish-speakers" }); assert.equal(r.ok, true); assert.equal(r.data.payeeVerified, false, "no payee in signed versions.json yet"); }
+    calls.push(`${init.method} ${u}`); return json({ ok: true, order: { orderId: "SM-ABCDEFGHJK", token: "smt_" + "a".repeat(43), payTo: PINNED_PAYEE!, amount: "300.000123" } }, 201); });
+  for (let i = 0; i < 2; i++) { const r = await t.create_template_order.h({ sku: "fish-speakers" }); assert.equal(r.ok, true); assert.equal(r.data.payeeVerified, true, "pin + signed versions.json payee match"); }
   const third = await t.create_template_order.h({ sku: "fish-speakers" });
   assert.equal(third.ok, false); assert.match(third.err, /Too many/);
   assert.deepEqual(calls, [`POST ${STORE_ORIGIN}/api/store/order`, `POST ${STORE_ORIGIN}/api/store/order`]);
@@ -63,8 +63,8 @@ test("rhythm: the published file verifies with the pinned key; a tampered one fa
   assert.equal(verifyRhythm(body, sign(null, body, privateKey).toString("base64")), false, "other keys are rejected");
 });
 
-test("payee pin (S2): unset today; any mismatch with the pin or the signed payee refuses", () => {
-  assert.equal(PINNED_PAYEE, null, "left unset until Sajan confirms the production payee");
+test("payee pin (S2): pinned to 0x88e8…780f; any mismatch with the pin or the signed payee refuses", () => {
+  assert.equal(PINNED_PAYEE, "0x88e8516771e71da54a7449a0a46e6a0c4af71ef71ac4d379847319c7e18a780f", "Sajan 6:37 AM PT: pinned");
   const A = "0x" + "ab".repeat(32), B = "0x" + "cd".repeat(32);
   assert.deepEqual(checkPayee(A, null, null), { ok: true, verified: false, payTo: A });
   assert.equal(checkPayee(A, A, null).verified, true);
@@ -76,12 +76,12 @@ test("payee pin (S2): unset today; any mismatch with the pin or the signed payee
 
 test("create_template_order refuses a payee that differs from the pin, and a versions.json with a bad signature", async () => {
   const site = "/workspace/ixians/spicemelange-site/public/templates";
-  const mk = (sig: string, pinnedPayee: string | null) => {
+  const mk = (sig: string, pinnedPayee: string | null, payTo: string = PINNED_PAYEE!) => {
     const tools: Record<string, any> = {};
     const wrap = (fn: any) => async (a: any) => { try { return { ok: true, data: await fn(a) }; } catch (e) { return { ok: false, err: (e as Error).message }; } };
     registerStoreTools((n, c, h) => (tools[n] = { c, h }), wrap as any, { clientId: "p", origin: STORE_ORIGIN, lim: new OrderLimiter(9, 9), pinnedPayee,
       fetchImpl: (async (u: string) => u.endsWith("versions.json") ? new Response(readFileSync(`${site}/versions.json`)) : u.endsWith(".sig") ? new Response(sig)
-        : json({ ok: true, order: { orderId: "SM-ABCDEFGHJK", token: "smt_" + "a".repeat(43), payTo: "0x" + "ab".repeat(32), amount: "50.000001" } }, 201)) as any });
+        : json({ ok: true, order: { orderId: "SM-ABCDEFGHJK", token: "smt_" + "a".repeat(43), payTo, amount: "50.000001" } }, 201)) as any });
     return tools;
   };
   const good = readFileSync(`${site}/versions.json.sig`, "utf8");
@@ -89,8 +89,10 @@ test("create_template_order refuses a payee that differs from the pin, and a ver
   assert.equal(r1.ok, false); assert.match(r1.err, /REFUSED/);
   const r2 = await mk(Buffer.alloc(64).toString("base64"), null).create_template_order.h({ sku: "moneo" });
   assert.equal(r2.ok, false); assert.match(r2.err, /does NOT verify/);
-  const r3 = await mk(good, "0x" + "ab".repeat(32)).create_template_order.h({ sku: "moneo" });
+  const r3 = await mk(good, PINNED_PAYEE).create_template_order.h({ sku: "moneo" });
   assert.equal(r3.ok, true); assert.equal(r3.data.payeeVerified, true);
+  const r4 = await mk(good, null, "0x" + "ab".repeat(32)).create_template_order.h({ sku: "moneo" });
+  assert.equal(r4.ok, false); assert.match(r4.err, /signed versions\.json/, "the signed payee alone also refuses a swapped payTo");
 });
 
 test("S5: open-hold caps per client and global, plus hourly rate", () => {
@@ -126,4 +128,21 @@ test("S5: /48 grouping, hashed forwarded client, store key only when set", async
     if (key && salt) { assert.equal(h["x-connector-key"], key); assert.equal(h["x-connector-client"], forwardedClient("ip:2001:0db8:0001::/48", salt)); }
     else assert.equal(h["x-connector-key"], undefined);
   }
+});
+
+test("S2 end-to-end: production pin + signed versions.json (real signed bytes) -> payeeVerified=true; any other payTo refused", async () => {
+  const { readFileSync } = await import("node:fs");
+  const vbody = readFileSync(new URL("./fixtures/versions.prod.json", import.meta.url));
+  const vsig = readFileSync(new URL("./fixtures/versions.prod.json.sig", import.meta.url), "utf8");
+  const order = (payTo: string) => ({ ok: true, order: { orderId: "SM-PINTEST01", token: "t".repeat(32), payTo, coinType: "x", amount: "50.001", amountAtomic: "50001000", expiresAt: new Date(Date.now() + 1_800_000).toISOString() } });
+  const mk = (payTo: string) => async (url: string) => {
+    if (url.endsWith("/templates/versions.json")) return new Response(vbody);
+    if (url.endsWith("/templates/versions.json.sig")) return new Response(vsig);
+    if (url.endsWith("/api/store/order")) return json(order(payTo), 201);
+    return json({}, 404);
+  };
+  const ok = await harness(mk(PINNED_PAYEE!)).create_template_order.h({ sku: "moneo" });
+  assert.equal(ok.ok, true); assert.equal(ok.data.payeeVerified, true);
+  const bad = await harness(mk("0x" + "ab".repeat(32))).create_template_order.h({ sku: "moneo" });
+  assert.equal(bad.ok, false); assert.match(bad.err, /REFUSED/);
 });

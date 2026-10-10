@@ -23,9 +23,10 @@ export function storeOrigin(env: Record<string, string | undefined> = process.en
   throw new Error(`PLUMBLINE_STORE_URL must be ${STORE_ORIGIN}` + (PREVIEW_RE.test(o) ? " (preview origins need PLUMBLINE_ALLOW_PREVIEW_STORE=1)" : `; got ${o}`));
 }
 
-/** Payee pin (Siona S2). Set to the production Sui payee ONLY after Sajan confirms it; until then the pin comes from the
- * signed versions.json alone (field `store.payTo`), and orders are marked unverified if that field is absent. */
-export const PINNED_PAYEE: string | null = null;
+/** Payee pin (Siona S2). Sajan, 6:37 AM PT Oct 10 2026: keep the store payee 0x88e8…780f and pin it.
+ * Hard-coded (not an env var) so a config change can't redirect payments. Also published in the signed versions.json
+ * (`store.payTo`); an order is payable only if its payTo equals both. Applies to the production store origin only. */
+export const PINNED_PAYEE: string | null = "0x88e8516771e71da54a7449a0a46e6a0c4af71ef71ac4d379847319c7e18a780f";
 const norm = (a: unknown) => (typeof a === "string" && /^0x[0-9a-fA-F]{1,64}$/.test(a) ? "0x" + a.slice(2).toLowerCase().padStart(64, "0") : null);
 
 /** Reads the signed versions.json (ed25519, pinned release key) and returns its published payee, if any. Throws if the signature fails. */
@@ -164,7 +165,7 @@ export function registerStoreTools(reg: Reg, wrap: Wrap, opts: StoreToolOpts = {
     if (!r.ok || !r.json?.order) throw new UserInputError(`Store refused the order (${r.status}): ${r.json?.reason ?? "unknown"}`);
     const o = r.json.order;
     lim.hold(client, Date.parse(o.expiresAt));
-    const pc = checkPayee(o.payTo, await signedPayee(f, origin), opts.pinnedPayee === undefined ? PINNED_PAYEE : opts.pinnedPayee);
+    const pc = checkPayee(o.payTo, await signedPayee(f, origin), opts.pinnedPayee === undefined ? (origin === STORE_ORIGIN ? PINNED_PAYEE : null) : opts.pinnedPayee);
     if (!pc.ok) throw new UserInputError(`REFUSED: ${pc.reason}. Do not pay this order; tell your owner.`);
     return { payeeVerified: pc.verified, payeeNote: pc.verified ? "payTo matches the signed payee pin." : "The payee is not yet published in the signed versions.json. Show the FULL payTo address to your owner and get an explicit yes before paying.",
       orderId: o.orderId, token: o.token, payTo: o.payTo, coinType: o.coinType, amount: o.amount, amountAtomic: o.amountAtomic, expiresAt: o.expiresAt, howToPay: o.howToPay,

@@ -192,7 +192,7 @@ Plumbline is named after a plumb line, the weighted cord used to measure depth a
 
 MIT. See [LICENSE](./LICENSE).
 
-## Store and desk tools (v0.3.2)
+## Store and desk tools (v0.3.3)
 
 Four extra tools let an agent find, buy and join without a human checkout. They are free (not metered).
 

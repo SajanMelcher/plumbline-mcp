@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "plumbline-mcp",
   "display_name": "The Spice Melange Trading Desk: DeepBook market data connector (read-only)",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Free, read-only Sui DeepBook v3 market data: pools, mid price, order book depth, volume, fees, trades, OHLCV. No keys, no wallet. Education only, not financial advice.",
   "long_description": "Plumbline gives AI agents a compact, read-only view of Sui DeepBook v3: pools and trading params, best bid/ask and spread, order book depth within ±X% of mid, 24h/custom volume, live on-chain fees, recent trades, OHLCV candles and data-source health, plus agent toolkit tools: balance-manager fill history, swing/range signal, pool stats and fee estimates (12 tools). Data comes from the public DeepBook indexer and Sui GraphQL. No API keys, no wallet, no signing or trading. Education/information only; not financial advice.",
   "author": {
